@@ -28,7 +28,7 @@ fun main() {
         return sum
     }
 
-    val input = readLineInput("Day03")
+    val input = readTextInput("Day03")
     part1(input).println()
     part2(input).println()
 }
