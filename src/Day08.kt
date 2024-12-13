@@ -1,9 +1,3 @@
-private sealed interface Strategy
-
-private data object Signal : Strategy
-
-private data object Resonance : Strategy
-
 fun main() {
 
     data class Vec2(val x: Int, val y: Int)
@@ -25,7 +19,7 @@ fun main() {
         }
     }
 
-    fun calculateAntiNodes(current: Vec2, subsequent: Vec2, mapRange: MapRange) = buildSet<Vec2> {
+    fun antiNodeSignals(current: Vec2, subsequent: Vec2, mapRange: MapRange) = buildSet<Vec2> {
         val deltaX = current.x - subsequent.x
         val deltaY = current.y - subsequent.y
 
@@ -33,7 +27,7 @@ fun main() {
         Vec2(subsequent.x - deltaX, subsequent.y - deltaY).takeIf { position -> position in mapRange }?.let(::add)
     }
 
-    fun calculateAntiNodesWithResonance(current: Vec2, subsequent: Vec2, mapRange: MapRange) = buildSet<Vec2> {
+    fun antiNodesWithResonance(current: Vec2, subsequent: Vec2, mapRange: MapRange) = buildSet<Vec2> {
         add(current)
         val deltaX = current.x - subsequent.x
         val deltaY = current.y - subsequent.y
@@ -47,28 +41,35 @@ fun main() {
         } while (forward in mapRange || reverse in mapRange)
     }
 
-    fun calculateAntiNodes(positions: List<Vec2>, mapRange: MapRange, strategy: Strategy) = buildSet<Vec2> {
+    fun antiNodeLocations(
+        positions: List<Vec2>,
+        calculateAntiNodes: (Vec2, Vec2) -> Set<Vec2>,
+    ): Set<Vec2> = buildSet<Vec2> {
         positions.dropLast(1).forEachIndexed { index, current ->
             val subsequentPositions = positions.slice(index + 1..positions.lastIndex)
-            subsequentPositions.forEach { subsequent ->
-                when (strategy) {
-                    Signal -> calculateAntiNodes(current, subsequent, mapRange)
-                    Resonance -> calculateAntiNodesWithResonance(current, subsequent, mapRange)
-                }.run(::addAll)
-            }
+            subsequentPositions.forEach { subsequent -> calculateAntiNodes(current, subsequent).run(::addAll) }
         }
     }
 
-    fun uniqueAntiNodesLocations(map: List<String>, strategy: Strategy): Int {
-        val mapRange = MapRange(map)
-        return frequencyLocationsMap(map).flatMap { (_, positions) ->
-            calculateAntiNodes(positions, mapRange, strategy)
-        }.distinct().count()
+    fun uniqueAntiNodeLocations(map: List<String>, calculateAntiNodes: (Vec2, Vec2) -> Set<Vec2>): Int {
+        return frequencyLocationsMap(map).flatMap { (_, positions) -> antiNodeLocations(positions, calculateAntiNodes) }
+            .distinct()
+            .count()
     }
 
-    fun part1(input: List<String>): Int = uniqueAntiNodesLocations(input, strategy = Signal)
+    fun part1(input: List<String>): Int = MapRange(input).let { mapRange ->
+        uniqueAntiNodeLocations(
+            map = input,
+            calculateAntiNodes = { current, subsequent -> antiNodeSignals(current, subsequent, mapRange) }
+        )
+    }
 
-    fun part2(input: List<String>): Int = uniqueAntiNodesLocations(input, strategy = Resonance)
+    fun part2(input: List<String>): Int = MapRange(input).let { mapRange ->
+        uniqueAntiNodeLocations(
+            map = input,
+            calculateAntiNodes = { current, subsequent -> antiNodesWithResonance(current, subsequent, mapRange) }
+        )
+    }
 
     val input = readInput("Day08")
     part1(input).println()
